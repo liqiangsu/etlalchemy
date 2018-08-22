@@ -663,24 +663,36 @@ class ETLAlchemySource():
             password = self.dst_engine.url.password
             db_name = self.dst_engine.url.database
             host = self.dst_engine.url.host
+
             self.logger.info(
                 "Sending data to target MySQL instance...(Fast [mysqlimport])")
-            columns = map(lambda c: "\`{0}\`".format(c), columns)
-            cmd = ("mysqlimport -v -h{0} -u{1} -p{2} "
-                       "--compress "
-                       "--local "
-                       "--fields-terminated-by=\",\" "
-                       "--fields-enclosed-by='\"' "
-                       "--fields-escaped-by='\\' "
-                       # "--columns={3} "
-                       "--lines-terminated-by=\"\n\" "
-                       "{3} {4}"
-                      ).format(host, username, password,
-                                       #",".join(columns), db_name,
-                                       db_name,
-                                       data_file_path)
-            self.logger.info(cmd)
-            os.system(cmd)
+            engine = create_engine("mysql+mysqldb://{}:{}@{}/{}".format(username,password,host,db_name))
+            
+            try:
+                with open(data_file_path) as f:
+                    query = f.readlines()
+                query = "\n".join(query)
+                results = engine.execute(query)
+                print(results)
+            except:
+                pass
+            # columns = map(lambda c: "\`{0}\`".format(c), columns)
+            # cmd = ("mysqlimport -v -h{0} -u{1} -p{2} "
+            #            "--compress "
+            #            "--local "
+            #            """--fields-terminated-by="," """
+            #            """--fields-enclosed-by='"' """
+            #            """--fields-escaped-by='\\' """
+            #            # "--columns={3} "
+            #            """--lines-terminated-by="\\n" """
+            #            "{3} {4}"
+            #           ).format(host, username, password,
+            #                            #",".join(columns), db_name,
+            #                            db_name,
+            #                            data_file_path)
+            # self.logger.info(cmd)
+            # exist_status = os.system(cmd)
+            # self.logger.info("insert status: {}".format(exist_status))
             self.logger.info("Done.")
         elif self.dst_engine.dialect.name.lower() == "postgresql":
             # TODO: Take advantage of psql> COPY FROM <payload.sql> WITH
@@ -756,7 +768,10 @@ class ETLAlchemySource():
             raise Exception("Not Implemented!")
         # Cleanup...
         self.logger.info("Cleaning up '{0}'.sql".format(table))
-        os.remove(data_file_path)
+         try:
+             os.remove(data_file_path)
+         except:
+             pass
         self.logger.info("Done")
 
     """
@@ -811,8 +826,10 @@ class ETLAlchemySource():
                 s = "There is no primary key defined on table '{0}'!\n " +\
                     "We are unable to Upsert into this table without " +\
                     "identifying unique rows based on PKs!".format(T.name)
-                raise Exception(s)
-            unique_columns = filter(lambda c: c.name.lower() in pks, T.columns)
+                return
+                #raise Exception(s)
+            #unique_columns = filter(lambda c: c.name.lower() in pks, T.columns)
+            unique_columns = filter(lambda c: c.name in pks, T.columns)
             self.logger.info(
                 "Unique columns are '{0}'".format(
                     str(unique_columns)))
@@ -1031,7 +1048,8 @@ class ETLAlchemySource():
                     #  keys & auto-increment
                     ##############################
                     if column.primary_key:
-                        pks.append(column.name.lower())
+                        #pks.append(column.name.lower())
+                        pks.append(column.name)
                         pk_count += 1
                     
                     if column.autoincrement:

@@ -92,9 +92,8 @@ def _generate_literal_value(value, dialect):
     elif isinstance(value, decimal.Decimal):
         return str(value)
     elif isinstance(value, datetime.datetime):
-        #if dialect_name == "mysql":
-        #    return "STR_TO_DATE('%s','%%Y-%%m-%%d %%H:%%M:%%S')" %\
-        #        value.strftime("%Y-%m-%d %H:%M:%S")
+        if dialect_name == "mysql":
+           return value.strftime("'%Y-%m-%d %H:%M:%S'")
         if dialect_name == "oracle":
             return "TO_DATE('%s','YYYY-MM-DD HH24:MI:SS')" %\
                     ('%02d-%02d-%02d %02d:%02d:%02d' %\
